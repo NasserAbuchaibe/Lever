@@ -1,0 +1,48 @@
+version: '3.3'
+
+services:
+  web:
+    build: ./app
+    command: python manage.py runserver 0.0.0.0:8000
+    volumes:
+      - ./app/:/usr/src/app/
+    ports:
+      - 8000:8000
+    env_file:
+      - ./.env.dev
+    depends_on:
+      - db
+      - redis
+  db:
+    image: postgres:12-alpine
+    volumes:
+      - postgres_data:/var/lib/postgresql/data/
+    environment:
+      - POSTGRES_USER=lever
+      - POSTGRES_PASSWORD=lever
+      - POSTGRES_DB=lever_dev
+  celery:
+    build: ./app
+    command: celery -A lever worker --loglevel=INFO --logfile=logs/celery.log
+    volumes:
+      - ./app:/usr/src/app
+    env_file:
+      - ./.env.dev
+    depends_on:
+      - web
+      - redis
+  celery-beat:
+    build: ./app
+    command: celery -A lever beat --loglevel=INFO --logfile=logs/celery-beat.log
+    volumes:
+      - ./app:/usr/src/app
+    env_file:
+      - ./.env.dev
+    depends_on:
+      - web
+      - redis
+  redis:
+    image: redis:6-alpine
+
+volumes:
+    postgres_data:
